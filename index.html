@@ -45,14 +45,18 @@ tailwind.config = { theme: { extend: {
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .notice{padding:12px 15px;background:#fff8df;border-left:4px solid #d7a72d;border-radius:8px}
   .chip{display:inline-block;padding:.15rem .6rem;border-radius:999px;font-size:.75rem;font-weight:600}
-  .doc-page{width:210mm;min-height:297mm;padding:18mm 20mm;background:#fff;color:#000;box-sizing:border-box;page-break-after:always;font-family:"Noto Sans Thai",Tahoma,sans-serif;font-size:15pt;line-height:1.6;position:relative}
-  .doc-page:last-child{page-break-after:auto}
+  .doc-page{width:210mm;height:296.5mm;padding:14mm 20mm 10mm;background:#fff;color:#000;box-sizing:border-box;overflow:hidden;page-break-after:always;break-after:page;font-family:"Noto Sans Thai",Tahoma,sans-serif;font-size:14pt;line-height:1.5;display:flex;flex-direction:column}
+  .doc-page:last-child{page-break-after:auto;break-after:auto}
+  .doc-page table.info td{padding:1.2mm 0;vertical-align:top}
+  .doc-sign{text-align:center;width:82mm;white-space:nowrap}
+  .doc-foot{margin-top:auto;padding-top:3mm;font-size:9pt;color:#555;display:flex;justify-content:space-between;border-top:.3mm solid #ccc}
   #docPrintArea{display:none}
   @page{size:A4;margin:0}
   @media print{
     body.printing-doc>*:not(#docPrintArea){display:none!important}
     body.printing-doc #docPrintArea{display:block!important}
-    body.printing-doc{background:#fff}
+    body.printing-doc{background:#fff;margin:0;padding:0}
+    #docPrintArea{margin:0;padding:0}
     .doc-page{box-shadow:none;margin:0}
   }
   .fade-in{animation:fade .3s ease}@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -61,9 +65,9 @@ tailwind.config = { theme: { extend: {
   .star{font-size:2.2rem;line-height:1;cursor:pointer;color:#cbd5e1;transition:.1s;user-select:none;padding:0 .15rem}
   .star.on{color:#f59e0b;text-shadow:0 2px 6px rgba(245,158,11,.35)}
   .step{width:44px;height:44px;border-radius:.75rem;background:#eef2f7;font-size:1.4rem;font-weight:700;color:#0b3d91}
-  .doc-land{width:297mm;min-height:210mm;padding:14mm 16mm}
-  .rpt{width:100%;border-collapse:collapse;font-size:11pt}
-  .rpt th,.rpt td{border:1px solid #333;padding:1.2mm 2mm;vertical-align:top}
+  .doc-land{width:296.5mm;height:209.5mm;padding:12mm 16mm 8mm}
+  .rpt{width:100%;border-collapse:collapse;font-size:10pt;table-layout:fixed}
+  .rpt th,.rpt td{border:.25mm solid #333;padding:.8mm 1.5mm;vertical-align:top;overflow:hidden;word-break:break-word}
   .rpt th{background:#e8eef7}
 </style>
 </head>
@@ -306,10 +310,15 @@ tailwind.config = { theme: { extend: {
 const LOGO_FALLBACK = LOGO_BASE64;
 const LS = { pub: 'gb_pub', init: 'gb_init', token: 'gb_token', user: 'gb_user', dirty: 'gb_dirty' };
 const $ = id => document.getElementById(id);
+// localStorage แบบปลอดภัย (บางเบราว์เซอร์/โหมดส่วนตัวปิดไว้ → ระบบยังทำงานได้ แค่ไม่จำแคช)
+const memLS = {};
+function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return memLS[k] == null ? null : memLS[k]; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { memLS[k] = String(v); } }
+function lsDel(k) { try { localStorage.removeItem(k); } catch (e) { delete memLS[k]; } }
 const TH_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
 const TH_MONTHS_SHORT = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 let settings = {}, state = { token: null, user: null, tables: { Guestbook: [], Users: [], Settings: [] }, licenseExpires: '' };
-let DIRTY = localStorage.getItem(LS.dirty) === '1';
+let DIRTY = lsGet(LS.dirty) === '1';
 
 // ---------- utils ----------
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -318,7 +327,7 @@ function thaiDate(iso) { if (!iso) return ''; const [y, m, d] = String(iso).slic
 function thaiDateTime(iso) { if (!iso) return ''; return thaiDate(iso) + (iso.length > 10 ? ' ' + iso.slice(11, 16) + ' น.' : ''); }
 function toast(msg, type) { const t = $('toast'); t.textContent = msg; t.style.background = type === 'error' ? '#b91c1c' : type === 'warn' ? '#b45309' : '#15803d'; t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 3500); }
 function overlay(on, text) { $('overlay').classList.toggle('hidden', !on); if (text) $('overlayText').textContent = text; }
-function setDirty(v) { DIRTY = v; localStorage.setItem(LS.dirty, v ? '1' : '0'); }
+function setDirty(v) { DIRTY = v; lsSet(LS.dirty, v ? '1' : '0'); }
 function download(name, content, mime) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([content], { type: mime || 'application/octet-stream' })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
 function loadScript(src) { return new Promise((res, rej) => { if (document.querySelector('script[src="' + src + '"]')) return res(); const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('โหลดไลบรารีไม่สำเร็จ')); document.head.appendChild(s); }); }
 function isAdmin() { return state.user && state.user.role === 'admin'; }
@@ -367,10 +376,10 @@ function renderPurposeOptions() {
 function togglePurposeOther() { const other = $('gPurpose').value === PURPOSE_OTHER; $('gPurposeOther').classList.toggle('hidden', !other); if (other) $('gPurposeOther').focus(); }
 function purposeValue() { const v = $('gPurpose').value; if (v !== PURPOSE_OTHER) return v; const o = $('gPurposeOther').value.trim(); return o ? 'อื่นๆ: ' + o : ''; }
 async function loadPublicSettings() {
-  try { const c = JSON.parse(localStorage.getItem(LS.pub) || 'null'); if (c) applySettings(c); } catch (e) {}
+  try { const c = JSON.parse(lsGet(LS.pub) || 'null'); if (c) applySettings(c); } catch (e) {}
   try {
     const r = await api('getPublicSettings', {}, { noCache: DIRTY });
-    applySettings(r.settings); localStorage.setItem(LS.pub, JSON.stringify(r.settings));
+    applySettings(r.settings); lsSet(LS.pub, JSON.stringify(r.settings));
   } catch (e) { if (!settings.schoolName) applySettings({}); }
 }
 
@@ -460,7 +469,7 @@ async function login() {
   try {
     const r = await api('login', { username, password });
     state.token = r.token; state.user = r.user; state.licenseExpires = r.licenseExpires;
-    localStorage.setItem(LS.token, r.token); localStorage.setItem(LS.user, JSON.stringify(r.user));
+    lsSet(LS.token, r.token); lsSet(LS.user, JSON.stringify(r.user));
     $('lPass').value = '';
     enterAdmin();
     if (r.user.mustChangePassword) openPwModal(true);
@@ -470,7 +479,7 @@ async function login() {
 function logout(silent) {
   if (state.token && !silent) api('logout').catch(() => {});
   state.token = null; state.user = null; state.tables = { Guestbook: [], Users: [], Settings: [] };
-  localStorage.removeItem(LS.token); localStorage.removeItem(LS.user); localStorage.removeItem(LS.init);
+  lsDel(LS.token); lsDel(LS.user); lsDel(LS.init);
   showView('Guest');
 }
 function enterAdmin() {
@@ -482,12 +491,12 @@ function enterAdmin() {
 }
 async function loadInitial(force) {
   // stale-while-revalidate
-  try { const c = JSON.parse(localStorage.getItem(LS.init) || 'null'); if (c && c.tables) { state.tables = c.tables; state.licenseExpires = c.licenseExpires || state.licenseExpires; renderBook(); setStatus('yellow', 'แสดงข้อมูลจากเครื่อง กำลังซิงก์…'); } } catch (e) {}
+  try { const c = JSON.parse(lsGet(LS.init) || 'null'); if (c && c.tables) { state.tables = c.tables; state.licenseExpires = c.licenseExpires || state.licenseExpires; renderBook(); setStatus('yellow', 'แสดงข้อมูลจากเครื่อง กำลังซิงก์…'); } } catch (e) {}
   try {
     const r = await api('getInitialData', {}, { noCache: DIRTY || force });
     state.tables = r.tables; state.licenseExpires = r.licenseExpires; state.user = r.user; applySettings(r.settings);
-    localStorage.setItem(LS.init, JSON.stringify({ tables: r.tables, licenseExpires: r.licenseExpires, at: r.serverTime }));
-    localStorage.setItem(LS.pub, JSON.stringify(r.settings));
+    lsSet(LS.init, JSON.stringify({ tables: r.tables, licenseExpires: r.licenseExpires, at: r.serverTime }));
+    lsSet(LS.pub, JSON.stringify(r.settings));
     setDirty(false); renderBook(); setStatus('green', 'ซิงก์ล่าสุด ' + thaiDateTime(r.serverTime));
     if (!$('tab-settings').classList.contains('hidden')) renderSettings();
   } catch (e) { if (e.message !== 'UNAUTHORIZED') { setStatus('red', 'ซิงก์ไม่สำเร็จ'); toast(e.message, 'error'); } }
@@ -500,7 +509,7 @@ async function savePw() {
   if (n.length < 4) return toast('รหัสใหม่ต้องยาวอย่างน้อย 4 ตัว', 'error');
   if (n !== n2) return toast('ยืนยันรหัสผ่านไม่ตรงกัน', 'error');
   overlay(true, 'กำลังเปลี่ยนรหัสผ่าน…');
-  try { await api('changePassword', { oldPassword: o, newPassword: n }); state.user.mustChangePassword = false; localStorage.setItem(LS.user, JSON.stringify(state.user)); $('pwModal').classList.add('hidden'); toast('เปลี่ยนรหัสผ่านแล้ว'); }
+  try { await api('changePassword', { oldPassword: o, newPassword: n }); state.user.mustChangePassword = false; lsSet(LS.user, JSON.stringify(state.user)); $('pwModal').classList.add('hidden'); toast('เปลี่ยนรหัสผ่านแล้ว'); }
   catch (e) { toast(e.message, 'error'); } finally { overlay(false); }
 }
 
@@ -612,20 +621,21 @@ async function renderCharts(type, rows, sm) {
 function reportPage(type, year) {
   const rows = rowsOfYear(type, year).slice().sort((a, b) => String(a.visitDate).localeCompare(String(b.visitDate))), sm = summarize(rows);
   const logo = settings.logoUrl || LOGO_FALLBACK, title = YEAR_LABEL[type] + ' ' + (Number(year) + 543);
-  const per = 22, pages = [];
+  const per = 9, pages = [];
   for (let i = 0; i < Math.max(1, rows.length); i += per) pages.push(rows.slice(i, i + per));
+  if (pages[pages.length - 1].length > 3) pages.push([]);   // สรุปขึ้นหน้าใหม่ถ้าหน้าสุดท้ายแน่น
   const head = `<div style="display:flex;align-items:center;gap:6mm;margin-bottom:3mm"><img src="${esc(logo)}" style="width:20mm;height:20mm;object-fit:contain"><div><div style="font-size:16pt;font-weight:800">รายงานสรุปการเยี่ยมชมสถานศึกษา ${esc(title)}</div><div style="font-size:13pt;font-weight:700">${esc(settings.schoolName || '')}</div><div style="font-size:11pt">${esc(settings.affiliation || '')}</div></div></div>`;
-  const th = '<tr><th style="width:8mm">ที่</th><th style="width:26mm">วันที่</th><th>ชื่อ - สกุล / ตำแหน่ง</th><th>หน่วยงาน</th><th style="width:34mm">วัตถุประสงค์</th><th style="width:14mm">จำนวน (คน)</th><th style="width:20mm">พึงพอใจ</th><th>ความคิดเห็น</th></tr>';
+  const th = '<tr><th style="width:8mm">ที่</th><th style="width:27mm">วันที่</th><th style="width:46mm">ชื่อ - สกุล / ตำแหน่ง</th><th style="width:50mm">หน่วยงาน</th><th style="width:30mm">วัตถุประสงค์</th><th style="width:13mm">จำนวน (คน)</th><th style="width:19mm">พึงพอใจ</th><th>ความคิดเห็น</th></tr>';
   const pk = Object.keys(sm.byPurpose);
   const summary = `<div style="margin-top:4mm;display:flex;gap:8mm;font-size:11pt">
     <table class="rpt" style="width:auto"><tr><th>สรุป</th><th>จำนวน</th></tr><tr><td>รายการเยี่ยมทั้งหมด</td><td style="text-align:right">${sm.entries} รายการ</td></tr><tr><td>ผู้มาเยี่ยมรวม</td><td style="text-align:right">${sm.visitors.toLocaleString('th-TH')} คน</td></tr><tr><td>ความพึงพอใจเฉลี่ย</td><td style="text-align:right">${sm.avg != null ? sm.avg.toFixed(2) + ' / 5 (' + sm.rated + ' ราย)' : '-'}</td></tr></table>
     <table class="rpt" style="width:auto"><tr><th>วัตถุประสงค์</th><th>รายการ</th><th>คน</th></tr>${pk.map(k => '<tr><td>' + esc(k) + '</td><td style="text-align:right">' + sm.byPurpose[k].entries + '</td><td style="text-align:right">' + sm.byPurpose[k].visitors + '</td></tr>').join('') || '<tr><td colspan="3">-</td></tr>'}</table>
-    <div style="flex:1;display:flex;justify-content:space-around;align-items:flex-end;text-align:center;padding-bottom:2mm">
-      <div>ลงชื่อ ............................................ ผู้รายงาน<br>(............................................)<br>วันที่ ........./........./.........</div>
-      <div>ลงชื่อ ............................................ ผู้รับรอง<br>(${esc(settings.directorName || '............................................')})<br>${esc(settings.directorPosition || 'ผู้อำนวยการสถานศึกษา')}</div>
+    <div style="flex:1;display:flex;justify-content:space-around;align-items:flex-end;text-align:center;padding-bottom:2mm;white-space:nowrap">
+      <div>ลงชื่อ ...................................... ผู้รายงาน<br>(......................................)<br>วันที่ ........./........./.........</div>
+      <div>ลงชื่อ ...................................... ผู้รับรอง<br>(${esc(settings.directorName || '......................................')})<br>${esc(settings.directorPosition || 'ผู้อำนวยการสถานศึกษา')}</div>
     </div></div>`;
-  return '<style>@page{size:A4 landscape;margin:0}</style>' + pages.map((pg, pi) => `<div class="doc-page doc-land">${head}<table class="rpt">${th}${pg.map((r, i) => `<tr><td style="text-align:center">${pi * per + i + 1}</td><td>${thaiDate(r.visitDate)}</td><td>${esc(r.name)}<br><span style="font-size:9.5pt">${esc(r.position)}</span></td><td>${esc(r.org)}</td><td>${esc(r.purpose || '-')}</td><td style="text-align:center">${Number(r.visitors) || 1}</td><td style="text-align:center">${r.rating ? stars(r.rating) : '-'}</td><td style="font-size:9.5pt">${esc(String(r.comment || '').slice(0, 120))}${String(r.comment || '').length > 120 ? '…' : ''}</td></tr>`).join('') || '<tr><td colspan="8" style="text-align:center">ไม่มีรายการ</td></tr>'}</table>
-    ${pi === pages.length - 1 ? summary : ''}<div style="position:absolute;bottom:6mm;left:16mm;right:16mm;font-size:9pt;color:#555;display:flex;justify-content:space-between"><span>สมุดเยี่ยมอิเล็กทรอนิกส์ • ${esc(settings.schoolName || '')}</span><span>หน้า ${pi + 1}/${pages.length}</span></div></div>`).join('');
+  return '<style>@page{size:A4 landscape;margin:0}</style>' + pages.map((pg, pi) => `<div class="doc-page doc-land">${head}${pg.length || pi === 0 ? '<table class="rpt">' + th : '<div style="font-weight:700;margin-top:2mm">สรุปผล ' + esc(title) + '</div><table style="display:none">'}${pg.map((r, i) => `<tr><td style="text-align:center">${pi * per + i + 1}</td><td style="white-space:nowrap">${thaiDate(r.visitDate)}</td><td>${esc(r.name)}<br><span style="font-size:8.5pt;color:#333">${esc(r.position)}</span></td><td>${esc(r.org)}</td><td>${esc(r.purpose || '-')}</td><td style="text-align:center">${Number(r.visitors) || 1}</td><td style="text-align:center;white-space:nowrap">${r.rating ? stars(r.rating) : '-'}</td><td style="font-size:8.5pt">${esc(String(r.comment || '').slice(0, 60))}${String(r.comment || '').length > 60 ? '…' : ''}</td></tr>`).join('') || (pi === 0 ? '<tr><td colspan="8" style="text-align:center">ไม่มีรายการ</td></tr>' : '')}</table>
+    ${pi === pages.length - 1 ? summary : ''}<div class="doc-foot"><span>สมุดเยี่ยมอิเล็กทรอนิกส์ • ${esc(settings.schoolName || '')}</span><span>หน้า ${pi + 1}/${pages.length}</span></div></div>`).join('');
 }
 function printReport() { runPrint(reportPage($('dYearType').value, $('dYear').value)); }
 
@@ -633,35 +643,43 @@ function printReport() { runPrint(reportPage($('dYearType').value, $('dYear').va
 function docPage(r) {
   const logo = settings.logoUrl || LOGO_FALLBACK;
   const blank = !r;
-  const line = v => blank ? '<span style="display:inline-block;border-bottom:1px dotted #000;min-width:60%">&nbsp;</span>' : '<b>' + esc(v) + '</b>';
+  const dots = n => '.'.repeat(n || 40);
+  const val = v => blank ? dots(44) : '<b>' + esc(v) + '</b>';
+  const dirName = settings.directorName ? esc(settings.directorName) : dots(36);
   return `<div class="doc-page">
     <div style="text-align:center">
-      <img src="${esc(logo)}" style="width:32mm;height:32mm;object-fit:contain">
-      <div style="font-size:20pt;font-weight:800;margin-top:2mm">สมุดเยี่ยม</div>
-      <div style="font-size:17pt;font-weight:700">${esc(settings.schoolName || '')}</div>
-      <div style="font-size:13pt">${esc(settings.affiliation || '')}</div>
+      <img src="${esc(logo)}" style="width:26mm;height:26mm;object-fit:contain">
+      <div style="font-size:19pt;font-weight:800;letter-spacing:.5px;margin-top:1mm">สมุดเยี่ยม</div>
+      <div style="font-size:15pt;font-weight:700">${esc(settings.schoolName || '')}</div>
+      <div style="font-size:11.5pt">${esc(settings.affiliation || '')}</div>
     </div>
-    <div style="border-top:2px solid #0b3d91;margin:6mm 0 5mm"></div>
-    <table style="width:100%;border-collapse:collapse;font-size:15pt">
-      <tr><td style="width:36mm;padding:2mm 0;vertical-align:top">วันที่</td><td style="padding:2mm 0">${blank ? line('') : '<b>' + thaiDate(r.visitDate) + '</b>'}</td></tr>
-      <tr><td style="padding:2mm 0;vertical-align:top">ชื่อ - สกุล</td><td style="padding:2mm 0">${line(r && r.name)}</td></tr>
-      <tr><td style="padding:2mm 0;vertical-align:top">ตำแหน่ง</td><td style="padding:2mm 0">${line(r && r.position)}</td></tr>
-      <tr><td style="padding:2mm 0;vertical-align:top">หน่วยงาน</td><td style="padding:2mm 0">${line(r && r.org)}</td></tr>
-      <tr><td style="padding:2mm 0;vertical-align:top">วัตถุประสงค์</td><td style="padding:2mm 0">${blank ? line('') : esc(r.purpose || '-')}</td></tr>
-      <tr><td style="padding:2mm 0;vertical-align:top">จำนวนผู้เยี่ยม</td><td style="padding:2mm 0">${blank ? line('') : '<b>' + (Number(r.visitors) || 1) + '</b> คน'}</td></tr>
-      <tr><td style="padding:2mm 0;vertical-align:top">ความพึงพอใจ</td><td style="padding:2mm 0">${blank ? '☆ ☆ ☆ ☆ ☆' : (r.rating ? stars(r.rating) + ' (' + r.rating + '/5)' : '-')}</td></tr>
+    <div style="border-top:.6mm solid #0b3d91;border-bottom:.2mm solid #0b3d91;height:1mm;margin:4mm 0 4mm"></div>
+    <div style="display:flex;justify-content:space-between;font-size:12pt;margin-bottom:2mm"><span>บันทึกการเยี่ยมชมสถานศึกษา</span><span>วันที่ ${blank ? dots(30) : '<b>' + thaiDate(r.visitDate) + '</b>'}</span></div>
+    <table class="info" style="width:100%;border-collapse:collapse">
+      <tr><td style="width:34mm">ชื่อ - สกุล</td><td>${val(r && r.name)}</td></tr>
+      <tr><td>ตำแหน่ง</td><td>${val(r && r.position)}</td></tr>
+      <tr><td>หน่วยงาน</td><td>${val(r && r.org)}</td></tr>
+      <tr><td>วัตถุประสงค์</td><td>${blank ? '☐ ตรวจเยี่ยม &nbsp;☐ นิเทศติดตาม &nbsp;☐ ศึกษาดูงาน &nbsp;☐ แลกเปลี่ยนเรียนรู้ &nbsp;☐ อื่นๆ ' + dots(20) : esc(r.purpose || '-')}</td></tr>
+      <tr><td>จำนวนผู้เยี่ยม</td><td>${blank ? dots(12) + ' คน' : '<b>' + (Number(r.visitors) || 1) + '</b> คน'}</td></tr>
+      <tr><td>ความพึงพอใจ</td><td>${blank ? '☆ ☆ ☆ ☆ ☆ &nbsp;(ระบายดาว 1–5)' : (r.rating ? stars(r.rating) + ' &nbsp;(' + r.rating + '/5)' : '-')}</td></tr>
     </table>
-    <div style="margin-top:4mm;font-weight:700">ข้อคิดเห็น / ความประทับใจ / ข้อเสนอแนะ</div>
-    <div style="border:1px solid #333;border-radius:3mm;min-height:${blank ? 90 : 70}mm;padding:4mm;margin-top:2mm;white-space:pre-wrap;line-height:1.7">${blank ? '' : esc(r.comment || '-')}</div>
-    <div style="display:flex;justify-content:flex-end;margin-top:12mm">
-      <div style="text-align:center;width:80mm">
-        <div style="height:28mm;display:flex;align-items:flex-end;justify-content:center">${blank ? '' : '<img src="' + esc(r.signatureUrl) + '" style="max-height:26mm;max-width:70mm;object-fit:contain">'}</div>
-        <div>ลงชื่อ ................................................ ผู้เยี่ยม</div>
-        <div>(${blank ? '................................................' : esc(r.name)})</div>
-        <div>${blank ? '' : esc(r.position)}</div>
+    <div style="margin-top:3mm;font-weight:700">ข้อคิดเห็น / ความประทับใจ / ข้อเสนอแนะ</div>
+    <div style="flex:1;min-height:30mm;border:.3mm solid #333;border-radius:2mm;padding:3mm 4mm;margin-top:1.5mm;white-space:pre-wrap;line-height:1.5;overflow:hidden;font-size:${blank || String(r.comment || '').length < 350 ? 14 : String(r.comment || '').length < 700 ? 12 : 10.5}pt">${blank ? '' : esc(r.comment || '-')}</div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:6mm">
+      <div class="doc-sign">
+        <div style="height:20mm"></div>
+        <div>ลงชื่อ ${dots(36)} ผู้รับทราบ</div>
+        <div>(${dirName})</div>
+        <div style="font-size:12pt">${esc(settings.directorPosition || 'ผู้อำนวยการสถานศึกษา')}</div>
+      </div>
+      <div class="doc-sign">
+        <div style="height:20mm;display:flex;align-items:flex-end;justify-content:center">${blank ? '' : '<img src="' + esc(r.signatureUrl) + '" style="max-height:19mm;max-width:60mm;object-fit:contain">'}</div>
+        <div>ลงชื่อ ${dots(36)} ผู้เยี่ยม</div>
+        <div>(${blank ? dots(36) : esc(r.name)})</div>
+        <div style="font-size:12pt">${blank ? '&nbsp;' : esc(r.position)}</div>
       </div>
     </div>
-    <div style="position:absolute;bottom:10mm;left:20mm;right:20mm;font-size:10pt;color:#555;display:flex;justify-content:space-between"><span>สมุดเยี่ยมอิเล็กทรอนิกส์ • ${esc(settings.schoolName || '')}</span><span>${blank ? '' : 'รหัส ' + esc(r.id)}</span></div>
+    <div class="doc-foot"><span>สมุดเยี่ยมอิเล็กทรอนิกส์ • ${esc(settings.schoolName || '')}</span><span>${blank ? '' : 'รหัส ' + esc(r.id)}</span></div>
   </div>`;
 }
 function printEntries(ids) {
@@ -695,7 +713,7 @@ async function saveSettings() {
   overlay(true, 'กำลังบันทึกการตั้งค่า…');
   try {
     await api('upsert', { table: 'Settings', rows: rows.map(r => Object.assign(r, { updatedAt: '' })) });
-    const s = {}; rows.forEach(r => s[r.key] = r.value); applySettings(s); localStorage.setItem(LS.pub, JSON.stringify(settings));
+    const s = {}; rows.forEach(r => s[r.key] = r.value); applySettings(s); lsSet(LS.pub, JSON.stringify(settings));
     setDirty(true); toast('บันทึกการตั้งค่าแล้ว'); loadInitial(true);
   } catch (e) { toast(e.message, 'error'); } finally { overlay(false); }
 }
@@ -742,7 +760,7 @@ function renderSystem() {
   const exp = state.licenseExpires; $('licExp').textContent = exp ? thaiDate(exp) : '-';
   const days = exp ? Math.ceil((new Date(exp + 'T23:59:59') - new Date()) / 86400000) : null;
   const st = $('licStatus'); if (days == null) { st.textContent = ''; } else if (days < 0) { st.textContent = 'หมดอายุแล้ว'; st.className = 'chip bg-red-100 text-red-700'; } else if (days <= 30) { st.textContent = 'เหลือ ' + days + ' วัน'; st.className = 'chip bg-amber-100 text-amber-800'; } else { st.textContent = 'ใช้งานได้ (เหลือ ' + days + ' วัน)'; st.className = 'chip bg-green-100 text-green-700'; }
-  const init = JSON.parse(localStorage.getItem(LS.init) || '{}');
+  const init = JSON.parse(lsGet(LS.init) || '{}');
   $('sysInfo').innerHTML = 'ปลายทาง API: <code class="text-xs break-all">' + esc(WEB_APP_URL) + '</code><br>แคชในเครื่อง: ' + (init.at ? 'ซิงก์ล่าสุด ' + thaiDateTime(init.at) : 'ไม่มี') + '<br>รายการเยี่ยม: ' + (state.tables.Guestbook || []).length + ' • ผู้ใช้: ' + (state.tables.Users || []).length;
 }
 async function backup() {
@@ -787,14 +805,14 @@ function bind() {
   $('btnPrintAll').onclick = () => printEntries(null); $('btnPrintBlank').onclick = () => runPrint(docPage(null)); $('btnExport').onclick = exportXlsx;
   $('btnSaveSettings').onclick = saveSettings; $('logoFile').onchange = e => uploadLogo(e.target.files[0]); $('btnAddUser').onclick = addUser;
   $('btnBackup').onclick = backup; $('restoreFile').onchange = e => restore(e.target.files[0]); $('btnPurge').onclick = purge;
-  $('btnClearCache').onclick = () => { [LS.pub, LS.init, LS.dirty].forEach(k => localStorage.removeItem(k)); toast('ล้างแคชแล้ว'); loadInitial(true); };
+  $('btnClearCache').onclick = () => { [LS.pub, LS.init, LS.dirty].forEach(k => lsDel(k)); toast('ล้างแคชแล้ว'); loadInitial(true); };
 }
 async function boot() {
   bind(); $('gDateShow').value = thaiDate(todayISO()); sigInit();
   api('ping').then(() => setStatus('green', 'ออนไลน์')).catch(() => {});      // warm-up
   loadPublicSettings();
-  const tk = localStorage.getItem(LS.token);
-  if (tk) { state.token = tk; try { state.user = JSON.parse(localStorage.getItem(LS.user) || 'null'); } catch (e) {} if (state.user) { showView('Guest'); } }
+  const tk = lsGet(LS.token);
+  if (tk) { state.token = tk; try { state.user = JSON.parse(lsGet(LS.user) || 'null'); } catch (e) {} if (state.user) { showView('Guest'); } }
 }
 document.addEventListener('DOMContentLoaded', boot);
 </script>
