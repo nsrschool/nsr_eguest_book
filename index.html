@@ -297,11 +297,12 @@ async function api(action, data, opts) {
   opts = opts || {};
   const body = { action, data: data || {}, token: state.token || undefined };
   if (opts.noCache) body.noCache = true;
-  let res;
-  try {
-    const r = await fetch(WEB_APP_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
-    res = await r.json();
-  } catch (e) { setStatus('red', 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้'); throw new Error('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจสอบอินเทอร์เน็ต'); }
+  let r, res;
+  try { r = await fetch(WEB_APP_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) }); }
+  catch (e) { setStatus('red', 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้'); throw new Error('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ (ตรวจอินเทอร์เน็ต / WEB_APP_URL / สิทธิ์ Web App = Anyone)'); }
+  const raw = await r.text();
+  try { res = JSON.parse(raw); }
+  catch (e) { setStatus('red', 'เซิร์ฟเวอร์ตอบผิดรูปแบบ'); throw new Error('เซิร์ฟเวอร์ตอบไม่ใช่ JSON — ตรวจว่า Deploy เวอร์ชันใหม่ของ Code.gs แล้ว (Manage deployments → Edit → New version) และสิทธิ์ = Anyone'); }
   if (!res.ok) {
     if (res.error === 'UNAUTHORIZED') { toast('หมดเวลาใช้งาน กรุณาเข้าสู่ระบบใหม่', 'warn'); logout(true); throw new Error('UNAUTHORIZED'); }
     if (res.error === 'EXPIRED') { $('expiredBar').classList.remove('hidden'); throw new Error(res.message || 'ใบอนุญาตหมดอายุ'); }
