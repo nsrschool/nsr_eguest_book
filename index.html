@@ -58,6 +58,13 @@ tailwind.config = { theme: { extend: {
   .fade-in{animation:fade .3s ease}@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
   .status-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
   details summary{cursor:pointer;font-weight:700;color:#0b3d91}
+  .star{font-size:2.2rem;line-height:1;cursor:pointer;color:#cbd5e1;transition:.1s;user-select:none;padding:0 .15rem}
+  .star.on{color:#f59e0b;text-shadow:0 2px 6px rgba(245,158,11,.35)}
+  .step{width:44px;height:44px;border-radius:.75rem;background:#eef2f7;font-size:1.4rem;font-weight:700;color:#0b3d91}
+  .doc-land{width:297mm;min-height:210mm;padding:14mm 16mm}
+  .rpt{width:100%;border-collapse:collapse;font-size:11pt}
+  .rpt th,.rpt td{border:1px solid #333;padding:1.2mm 2mm;vertical-align:top}
+  .rpt th{background:#e8eef7}
 </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -87,8 +94,14 @@ tailwind.config = { theme: { extend: {
       <div><label class="font-bold block mb-1">ตำแหน่ง <span class="text-red-600">*</span></label><input id="gPosition" class="inp" placeholder="เช่น ผู้อำนวยการสถานศึกษา"></div>
       <div><label class="font-bold block mb-1">โรงเรียน / หน่วยงาน <span class="text-red-600">*</span></label><input id="gOrg" class="inp" placeholder="ชื่อโรงเรียนหรือหน่วยงาน"></div>
       <div><label class="font-bold block mb-1">วันที่เยี่ยมชม</label><input id="gDateShow" class="inp bg-slate-100" readonly></div>
-      <div class="md:col-span-2"><label class="font-bold block mb-1">วัตถุประสงค์การเยี่ยม <span id="purposeReq" class="text-red-600 hidden">*</span></label><input id="gPurpose" class="inp" placeholder="เช่น นิเทศติดตาม / ศึกษาดูงาน / ตรวจเยี่ยม"></div>
-      <div class="md:col-span-2"><label class="font-bold block mb-1">ข้อความความคิดเห็น / ความประทับใจ <span class="text-red-600">*</span></label><textarea id="gComment" class="inp min-h-[120px]" placeholder="เขียนข้อคิดเห็น ความประทับใจ หรือข้อเสนอแนะ..."></textarea></div>
+      <div><label class="font-bold block mb-1">จำนวนผู้มาเยี่ยม (คน) <span class="text-red-600">*</span></label>
+        <div class="flex items-center gap-2"><button type="button" class="step" id="btnVisMinus">−</button><input id="gVisitors" type="number" min="1" max="999" value="1" class="inp text-center !w-24 text-lg font-bold"><button type="button" class="step" id="btnVisPlus">+</button><span class="text-sm text-slate-500">คน</span></div></div>
+      <div><label class="font-bold block mb-1">ความพึงพอใจต่อการเยี่ยมชม <span class="text-red-600">*</span></label>
+        <div class="flex items-center gap-1" id="gStars"><span class="star" data-v="1">★</span><span class="star" data-v="2">★</span><span class="star" data-v="3">★</span><span class="star" data-v="4">★</span><span class="star" data-v="5">★</span><span id="gRatingText" class="text-sm text-slate-500 ml-2">แตะเพื่อให้คะแนน</span></div><input type="hidden" id="gRating" value=""></div>
+      <div class="md:col-span-2"><label class="font-bold block mb-1">วัตถุประสงค์การเยี่ยม <span class="text-red-600">*</span></label>
+        <select id="gPurpose" class="inp"><option value="">— เลือกวัตถุประสงค์ —</option></select>
+        <input id="gPurposeOther" class="inp mt-2 hidden" placeholder="โปรดระบุวัตถุประสงค์"></div>
+      <div class="md:col-span-2"><label class="font-bold block mb-1">ข้อความความคิดเห็น / ความประทับใจ</label><textarea id="gComment" class="inp min-h-[120px]" placeholder="เขียนข้อคิดเห็น ความประทับใจ หรือข้อเสนอแนะ (ไม่บังคับ)"></textarea></div>
       <input id="gWebsite" class="hidden" tabindex="-1" autocomplete="off">
       <div class="md:col-span-2">
         <label class="font-bold block mb-1">ลายมือชื่อ <span class="text-red-600">*</span></label>
@@ -155,6 +168,23 @@ tailwind.config = { theme: { extend: {
       <div class="card p-4"><div class="text-xs text-slate-500">ปีนี้ (พ.ศ.)</div><div class="text-2xl font-bold text-navy" id="stYear">0</div></div>
       <div class="card p-4"><div class="text-xs text-slate-500">ที่แสดง (ตามตัวกรอง)</div><div class="text-2xl font-bold text-gold" id="stShown">0</div></div>
     </div>
+    <details class="card p-4 mb-4" id="dashBox">
+      <summary>📊 แดชบอร์ดสถิติ &amp; รายงานสรุปรายปี</summary>
+      <div class="grid md:grid-cols-4 gap-2 mt-3">
+        <select id="dYearType" class="inp"><option value="ce">ปี พ.ศ. (ม.ค.–ธ.ค.)</option><option value="academic">ปีการศึกษา (พ.ค.–เม.ย.)</option><option value="fiscal">ปีงบประมาณ (ต.ค.–ก.ย.)</option></select>
+        <select id="dYear" class="inp"></select>
+        <button class="btn btn-gold !py-2 text-sm" id="btnReport">📑 พิมพ์รายงานสรุปรายปี (A4 แนวนอน)</button>
+      </div>
+      <div class="grid grid-cols-3 gap-2 mt-3 text-center">
+        <div class="bg-ivory rounded-xl p-3"><div class="text-xs text-slate-500">รายการ</div><div class="text-xl font-bold text-navy" id="dEntries">0</div></div>
+        <div class="bg-ivory rounded-xl p-3"><div class="text-xs text-slate-500">ผู้เยี่ยมรวม (คน)</div><div class="text-xl font-bold text-navy" id="dVisitors">0</div></div>
+        <div class="bg-ivory rounded-xl p-3"><div class="text-xs text-slate-500">ความพึงพอใจเฉลี่ย</div><div class="text-xl font-bold text-amber-500" id="dRating">-</div></div>
+      </div>
+      <div class="grid md:grid-cols-5 gap-3 mt-3">
+        <div class="md:col-span-3"><canvas id="chMonth" height="160"></canvas></div>
+        <div class="md:col-span-2"><canvas id="chPurpose" height="160"></canvas></div>
+      </div>
+    </details>
     <div class="card p-4 mb-4">
       <div class="grid md:grid-cols-4 gap-2">
         <input id="fSearch" class="inp md:col-span-2" placeholder="🔍 ค้นหา ชื่อ / หน่วยงาน / ข้อความ">
@@ -183,7 +213,7 @@ tailwind.config = { theme: { extend: {
         <div><label class="text-sm font-semibold">ตำแหน่งผู้อำนวยการ</label><input class="inp" data-key="directorPosition"></div>
         <div class="md:col-span-2"><label class="text-sm font-semibold">ข้อความแนะนำหน้าลงนาม</label><input class="inp" data-key="welcomeText"></div>
         <div class="md:col-span-2"><label class="text-sm font-semibold">ข้อความขอบคุณหลังบันทึก</label><input class="inp" data-key="thankText"></div>
-        <div><label class="text-sm font-semibold">บังคับกรอกวัตถุประสงค์</label><select class="inp" data-key="requirePurpose"><option value="false">ไม่บังคับ</option><option value="true">บังคับ</option></select></div>
+        <div class="md:col-span-2"><label class="text-sm font-semibold">ตัวเลือกวัตถุประสงค์การเยี่ยม (คั่นด้วย , — ระบบเติม "อื่นๆ (โปรดระบุ)" ให้เอง)</label><input class="inp" data-key="purposeOptions"></div>
       </div>
       <div class="mt-4 flex flex-wrap items-center gap-3">
         <div class="badge !w-20 !h-20"><img id="setLogoPreview" alt=""></div>
@@ -239,8 +269,8 @@ tailwind.config = { theme: { extend: {
   <div id="tab-guide" class="tabpane hidden">
     <div class="card p-5 space-y-3 text-sm leading-relaxed">
       <h3 class="font-bold text-navy text-lg">📖 คู่มือการใช้งาน</h3>
-      <details open><summary>สำหรับผู้มาเยี่ยม</summary><ol class="list-decimal ml-5 mt-1 space-y-1"><li>กรอก ชื่อ-สกุล, ตำแหน่ง, หน่วยงาน และข้อความความคิดเห็น</li><li>ลงลายมือชื่อในกรอบด้วยนิ้ว/ปากกา/เมาส์ (กด "ย้อน" หรือ "ล้าง" ได้)</li><li>กด "บันทึกการเยี่ยมชม" รอจนขึ้นหน้าขอบคุณ</li></ol></details>
-      <details><summary>รายการเยี่ยม (ผู้ดูแล)</summary><ul class="list-disc ml-5 mt-1 space-y-1"><li>ค้นหา / กรองเดือน-ปี ได้ทันที (ข้อมูลอ่านจากเครื่อง)</li><li>แตะรูปลายเซ็นเพื่อดูขนาดใหญ่</li><li>🖨️ พิมพ์รายการเดียว หรือพิมพ์ทั้งหมดที่แสดง เป็น A4 หน้าละ 1 คน (เลือก "บันทึกเป็น PDF" ได้)</li><li>📥 ส่งออก .xlsx ตามตัวกรองปัจจุบัน</li><li>ลบได้เฉพาะ admin</li></ul></details>
+      <details open><summary>สำหรับผู้มาเยี่ยม</summary><ol class="list-decimal ml-5 mt-1 space-y-1"><li>กรอก ชื่อ-สกุล, ตำแหน่ง, หน่วยงาน, จำนวนคน, ให้ดาวความพึงพอใจ และเลือกวัตถุประสงค์ (เลือก "อื่นๆ" แล้วพิมพ์ระบุได้) ส่วนความคิดเห็นไม่บังคับ</li><li>ลงลายมือชื่อในกรอบด้วยนิ้ว/ปากกา/เมาส์ (กด "ย้อน" หรือ "ล้าง" ได้)</li><li>กด "บันทึกการเยี่ยมชม" รอจนขึ้นหน้าขอบคุณ</li></ol></details>
+      <details><summary>รายการเยี่ยม (ผู้ดูแล)</summary><ul class="list-disc ml-5 mt-1 space-y-1"><li>ค้นหา / กรองเดือน-ปี ได้ทันที (ข้อมูลอ่านจากเครื่อง)</li><li>แตะรูปลายเซ็นเพื่อดูขนาดใหญ่</li><li>🖨️ พิมพ์รายการเดียว หรือพิมพ์ทั้งหมดที่แสดง เป็น A4 หน้าละ 1 คน (เลือก "บันทึกเป็น PDF" ได้)</li><li>📥 ส่งออก .xlsx ตามตัวกรองปัจจุบัน</li><li>📊 แดชบอร์ด: เลือกฐานปี (พ.ศ./ปีการศึกษา/ปีงบประมาณ) ดูกราฟรายเดือน + สัดส่วนวัตถุประสงค์ และพิมพ์ 📑 รายงานสรุปรายปี A4 แนวนอน พร้อมช่องลงชื่อผู้รายงาน/ผอ. รับรอง</li><li>ลบได้เฉพาะ admin</li></ul></details>
       <details><summary>ตั้งค่า</summary><ul class="list-disc ml-5 mt-1 space-y-1"><li>แก้ชื่อโรงเรียน/สังกัด/ผู้อำนวยการ/ข้อความ แล้วกดบันทึก — หน้าลงนามเปลี่ยนตามทันที</li><li>อัปโหลดโลโก้: ระบบย่อรูปอัตโนมัติและเก็บใน Google Drive</li><li>บัญชีผู้ใช้: admin จัดการทุกอย่าง / staff ดู-พิมพ์-ส่งออก, ใส่รหัสผิด 3 ครั้งจะถูกล็อก (admin ปลดล็อก)</li></ul></details>
       <details><summary>ระบบ (admin)</summary><ul class="list-disc ml-5 mt-1 space-y-1"><li>สำรอง .json เก็บไว้เป็นระยะ / กู้คืนเมื่อจำเป็น</li><li>ล้างรายการเก่าเมื่อขึ้นปีการศึกษาใหม่ (ควรส่งออกก่อน)</li></ul></details>
       <details><summary>ข้อควรรู้เมื่อแก้ไขระบบ</summary><ul class="list-disc ml-5 mt-1 space-y-1"><li>แก้ <b>Code.gs</b> → Deploy → Manage deployments → ✏️ Edit ตัวเดิม → New version</li><li>แก้ <b>index.html</b> → อัปขึ้น Cloudflare Pages ใหม่</li></ul></details>
@@ -277,6 +307,7 @@ const LOGO_FALLBACK = LOGO_BASE64;
 const LS = { pub: 'gb_pub', init: 'gb_init', token: 'gb_token', user: 'gb_user', dirty: 'gb_dirty' };
 const $ = id => document.getElementById(id);
 const TH_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const TH_MONTHS_SHORT = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 let settings = {}, state = { token: null, user: null, tables: { Guestbook: [], Users: [], Settings: [] }, licenseExpires: '' };
 let DIRTY = localStorage.getItem(LS.dirty) === '1';
 
@@ -323,9 +354,18 @@ function applySettings(s) {
   $('hdrLogo').onerror = () => { $('hdrLogo').onerror = null; $('hdrLogo').src = LOGO_FALLBACK; };
   $('welcomeText').textContent = settings.welcomeText || '';
   $('thankText').textContent = (settings.schoolName || '') + ' ' + (settings.thankText || '');
-  $('purposeReq').classList.toggle('hidden', String(settings.requirePurpose) !== 'true');
+  renderPurposeOptions();
   document.title = (settings.appTitle || 'e-Guestbook') + ' | ' + (settings.schoolName || '');
 }
+const PURPOSE_OTHER = 'อื่นๆ (โปรดระบุ)';
+function purposeList() { return String(settings.purposeOptions || 'ตรวจเยี่ยม,นิเทศติดตาม,ศึกษาดูงาน,แลกเปลี่ยนเรียนรู้').split(',').map(s => s.trim()).filter(Boolean); }
+function renderPurposeOptions() {
+  const sel = $('gPurpose'), cur = sel.value;
+  sel.innerHTML = '<option value="">— เลือกวัตถุประสงค์ —</option>' + purposeList().concat([PURPOSE_OTHER]).map(p => '<option value="' + esc(p) + '">' + esc(p) + '</option>').join('');
+  sel.value = cur; togglePurposeOther();
+}
+function togglePurposeOther() { const other = $('gPurpose').value === PURPOSE_OTHER; $('gPurposeOther').classList.toggle('hidden', !other); if (other) $('gPurposeOther').focus(); }
+function purposeValue() { const v = $('gPurpose').value; if (v !== PURPOSE_OTHER) return v; const o = $('gPurposeOther').value.trim(); return o ? 'อื่นๆ: ' + o : ''; }
 async function loadPublicSettings() {
   try { const c = JSON.parse(localStorage.getItem(LS.pub) || 'null'); if (c) applySettings(c); } catch (e) {}
   try {
@@ -379,9 +419,8 @@ function sigExport() {
 
 // ---------- guest submit ----------
 async function submitGuest() {
-  const d = { name: $('gName').value.trim(), position: $('gPosition').value.trim(), org: $('gOrg').value.trim(), purpose: $('gPurpose').value.trim(), comment: $('gComment').value.trim(), website: $('gWebsite').value, visitDate: todayISO() };
-  const miss = [['name', 'ชื่อ-สกุล'], ['position', 'ตำแหน่ง'], ['org', 'หน่วยงาน'], ['comment', 'ข้อความ']].filter(([k]) => !d[k]);
-  if (String(settings.requirePurpose) === 'true' && !d.purpose) miss.push(['purpose', 'วัตถุประสงค์']);
+  const d = { name: $('gName').value.trim(), position: $('gPosition').value.trim(), org: $('gOrg').value.trim(), purpose: purposeValue(), comment: $('gComment').value.trim(), website: $('gWebsite').value, visitDate: todayISO(), visitors: Math.min(999, Math.max(1, parseInt($('gVisitors').value, 10) || 1)), rating: parseInt($('gRating').value, 10) || 0 };
+  const miss = [['name', 'ชื่อ-สกุล'], ['position', 'ตำแหน่ง'], ['org', 'หน่วยงาน'], ['purpose', 'วัตถุประสงค์การเยี่ยม'], ['rating', 'ความพึงพอใจ (ดาว)']].filter(([k]) => !d[k]);
   if (miss.length) return toast('กรุณากรอก: ' + miss.map(m => m[1]).join(', '), 'error');
   if (!sigHasInk()) return toast('กรุณาลงลายมือชื่อก่อนบันทึก', 'error');
   d.signature = sigExport();
@@ -394,7 +433,8 @@ async function submitGuest() {
   finally { btn.disabled = false; overlay(false); }
 }
 function newEntry() {
-  ['gName', 'gPosition', 'gOrg', 'gPurpose', 'gComment', 'gWebsite'].forEach(id => $(id).value = '');
+  ['gName', 'gPosition', 'gOrg', 'gPurpose', 'gPurposeOther', 'gComment', 'gWebsite'].forEach(id => $(id).value = ''); togglePurposeOther();
+  $('gVisitors').value = 1; setRating(0);
   $('gDateShow').value = thaiDate(todayISO()); sig.strokes = []; sigRedraw();
   $('successCard').classList.add('hidden'); $('formCard').classList.remove('hidden'); window.scrollTo({ top: 0, behavior: 'smooth' });
   setTimeout(sigResize, 50);
@@ -486,6 +526,7 @@ function renderBook() {
   const fy = $('fYear'), cur = fy.value; fy.innerHTML = '<option value="">ทุกปี</option>' + years.map(y => '<option value="' + y + '">' + (Number(y) + 543) + '</option>').join(''); fy.value = years.includes(cur) ? cur : '';
   if ($('fMonth').options.length === 1) $('fMonth').innerHTML += TH_MONTHS.map((n, i) => '<option value="' + String(i + 1).padStart(2, '0') + '">' + n + '</option>').join('');
   const rows = filteredRows(); $('stShown').textContent = rows.length;
+  renderDashboard();
   $('bookEmpty').classList.toggle('hidden', rows.length > 0);
   $('bookList').innerHTML = rows.map(r => `
     <div class="card p-4 fade-in">
@@ -493,7 +534,7 @@ function renderBook() {
         <div><div class="font-bold text-navy text-lg">${esc(r.name)}</div><div class="text-sm text-slate-600">${esc(r.position)} • ${esc(r.org)}</div></div>
         <div class="text-xs text-slate-500 whitespace-nowrap">${thaiDate(r.visitDate)}</div>
       </div>
-      ${r.purpose ? '<div class="text-sm mt-2"><span class="chip bg-blue-50 text-blue">' + esc(r.purpose) + '</span></div>' : ''}
+      <div class="text-sm mt-2 flex flex-wrap gap-1">${r.purpose ? '<span class="chip bg-blue-50 text-blue">' + esc(r.purpose) + '</span>' : ''}<span class="chip bg-slate-100 text-slate-700">👥 ${Number(r.visitors) || 1} คน</span>${r.rating ? '<span class="chip bg-amber-50 text-amber-700">' + stars(r.rating) + '</span>' : ''}</div>
       <div class="text-sm mt-2 whitespace-pre-wrap bg-ivory rounded-lg p-3">${esc(r.comment)}</div>
       <div class="flex items-center justify-between mt-3">
         <img src="${esc(r.signatureUrl)}" alt="ลายเซ็น" class="h-12 max-w-[45%] object-contain cursor-zoom-in border rounded bg-white" onclick="viewSig('${esc(r.id)}')" loading="lazy">
@@ -517,12 +558,76 @@ async function exportXlsx() {
   overlay(true, 'กำลังสร้างไฟล์ Excel…');
   try {
     await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
-    const data = rows.map((r, i) => ({ 'ลำดับ': i + 1, 'วันที่เยี่ยม': thaiDate(r.visitDate), 'ชื่อ-สกุล': r.name, 'ตำแหน่ง': r.position, 'หน่วยงาน': r.org, 'วัตถุประสงค์': r.purpose || '', 'ความคิดเห็น': r.comment, 'ลายเซ็น (URL)': r.signatureUrl, 'บันทึกเมื่อ': thaiDateTime(r.createdAt) }));
-    const ws = XLSX.utils.json_to_sheet(data); ws['!cols'] = [4, 16, 24, 20, 26, 22, 50, 40, 20].map(w => ({ wch: w }));
+    const data = rows.map((r, i) => ({ 'ลำดับ': i + 1, 'วันที่เยี่ยม': thaiDate(r.visitDate), 'ชื่อ-สกุล': r.name, 'ตำแหน่ง': r.position, 'หน่วยงาน': r.org, 'วัตถุประสงค์': r.purpose || '', 'จำนวน (คน)': Number(r.visitors) || 1, 'ความพึงพอใจ (1-5)': r.rating ? Number(r.rating) : '', 'ความคิดเห็น': r.comment, 'ลายเซ็น (URL)': r.signatureUrl, 'บันทึกเมื่อ': thaiDateTime(r.createdAt) }));
+    const ws = XLSX.utils.json_to_sheet(data); ws['!cols'] = [4, 16, 24, 20, 26, 22, 10, 14, 50, 40, 20].map(w => ({ wch: w }));
     const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'สมุดเยี่ยม');
     XLSX.writeFile(wb, 'สมุดเยี่ยม_' + (settings.schoolName || '') + '_' + todayISO() + '.xlsx');
   } catch (e) { toast(e.message, 'error'); } finally { overlay(false); }
 }
+
+// ---------- ดาว / จำนวนคน ----------
+function stars(n) { n = Number(n) || 0; return '★'.repeat(n) + '☆'.repeat(Math.max(0, 5 - n)); }
+function setRating(v) {
+  $('gRating').value = v || '';
+  document.querySelectorAll('#gStars .star').forEach(el => el.classList.toggle('on', Number(el.dataset.v) <= v));
+  $('gRatingText').textContent = v ? ['', 'ควรปรับปรุง', 'พอใช้', 'ปานกลาง', 'ดี', 'ดีมาก'][v] + ' (' + v + '/5)' : 'แตะเพื่อให้คะแนน';
+}
+function stepVisitors(d) { const el = $('gVisitors'); el.value = Math.min(999, Math.max(1, (parseInt(el.value, 10) || 1) + d)); }
+
+// ---------- ปี / แดชบอร์ด ----------
+const YEAR_START = { ce: 1, academic: 5, fiscal: 10 };
+const YEAR_LABEL = { ce: 'ปี พ.ศ.', academic: 'ปีการศึกษา', fiscal: 'ปีงบประมาณ' };
+function yearOf(iso, type) { const y = Number(String(iso).slice(0, 4)), m = Number(String(iso).slice(5, 7)); if (!y) return null; if (type === 'academic') return m >= 5 ? y : y - 1; if (type === 'fiscal') return m >= 10 ? y + 1 : y; return y; }
+function monthSeq(type) { const st = YEAR_START[type] || 1; return Array.from({ length: 12 }, (_, i) => ((st - 1 + i) % 12) + 1); }
+function rowsOfYear(type, year) { return guestRows().filter(r => yearOf(r.visitDate, type) === Number(year)); }
+function summarize(rows) {
+  const visitors = rows.reduce((a, r) => a + (Number(r.visitors) || 1), 0);
+  const rated = rows.filter(r => Number(r.rating) >= 1);
+  const avg = rated.length ? rated.reduce((a, r) => a + Number(r.rating), 0) / rated.length : null;
+  const byPurpose = {}; rows.forEach(r => { const p = String(r.purpose || 'ไม่ระบุ').replace(/^อื่นๆ:.*/, 'อื่นๆ'); byPurpose[p] = byPurpose[p] || { entries: 0, visitors: 0 }; byPurpose[p].entries++; byPurpose[p].visitors += Number(r.visitors) || 1; });
+  return { entries: rows.length, visitors, avg, rated: rated.length, byPurpose };
+}
+let charts = {};
+function renderDashboard() {
+  const type = $('dYearType').value;
+  const years = [...new Set(guestRows().map(r => yearOf(r.visitDate, type)).filter(Boolean))].sort((a, b) => b - a);
+  const sel = $('dYear'), cur = Number(sel.value);
+  const nowY = yearOf(todayISO(), type); if (!years.includes(nowY)) years.unshift(nowY);
+  sel.innerHTML = years.map(y => '<option value="' + y + '">' + (y + 543) + '</option>').join(''); sel.value = years.includes(cur) ? cur : years[0];
+  const rows = rowsOfYear(type, sel.value), sm = summarize(rows);
+  $('dEntries').textContent = sm.entries; $('dVisitors').textContent = sm.visitors.toLocaleString('th-TH'); $('dRating').textContent = sm.avg != null ? sm.avg.toFixed(2) + ' ★' : '-';
+  if ($('dashBox').open) renderCharts(type, rows, sm);
+}
+async function renderCharts(type, rows, sm) {
+  try { await loadScript('https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js'); } catch (e) { return; }
+  const seq = monthSeq(type), ent = seq.map(() => 0), vis = seq.map(() => 0);
+  rows.forEach(r => { const i = seq.indexOf(Number(String(r.visitDate).slice(5, 7))); if (i >= 0) { ent[i]++; vis[i] += Number(r.visitors) || 1; } });
+  Object.values(charts).forEach(c => c && c.destroy && c.destroy()); charts = {};
+  charts.m = new Chart($('chMonth'), { type: 'bar', data: { labels: seq.map(m => TH_MONTHS_SHORT[m - 1]), datasets: [{ label: 'รายการ', data: ent, backgroundColor: '#145da0' }, { label: 'ผู้เยี่ยม (คน)', data: vis, backgroundColor: '#d7a72d' }] }, options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } } });
+  const keys = Object.keys(sm.byPurpose);
+  charts.p = new Chart($('chPurpose'), { type: 'doughnut', data: { labels: keys, datasets: [{ data: keys.map(k => sm.byPurpose[k].entries), backgroundColor: ['#0b3d91', '#d7a72d', '#145da0', '#f3d27a', '#64748b', '#94a3b8', '#1c6fc0'] }] }, options: { responsive: true, plugins: { legend: { position: 'bottom' }, title: { display: true, text: 'สัดส่วนตามวัตถุประสงค์' } } } });
+}
+
+// ---------- รายงานสรุปรายปี (A4 แนวนอน) ----------
+function reportPage(type, year) {
+  const rows = rowsOfYear(type, year).slice().sort((a, b) => String(a.visitDate).localeCompare(String(b.visitDate))), sm = summarize(rows);
+  const logo = settings.logoUrl || LOGO_FALLBACK, title = YEAR_LABEL[type] + ' ' + (Number(year) + 543);
+  const per = 22, pages = [];
+  for (let i = 0; i < Math.max(1, rows.length); i += per) pages.push(rows.slice(i, i + per));
+  const head = `<div style="display:flex;align-items:center;gap:6mm;margin-bottom:3mm"><img src="${esc(logo)}" style="width:20mm;height:20mm;object-fit:contain"><div><div style="font-size:16pt;font-weight:800">รายงานสรุปการเยี่ยมชมสถานศึกษา ${esc(title)}</div><div style="font-size:13pt;font-weight:700">${esc(settings.schoolName || '')}</div><div style="font-size:11pt">${esc(settings.affiliation || '')}</div></div></div>`;
+  const th = '<tr><th style="width:8mm">ที่</th><th style="width:26mm">วันที่</th><th>ชื่อ - สกุล / ตำแหน่ง</th><th>หน่วยงาน</th><th style="width:34mm">วัตถุประสงค์</th><th style="width:14mm">จำนวน (คน)</th><th style="width:20mm">พึงพอใจ</th><th>ความคิดเห็น</th></tr>';
+  const pk = Object.keys(sm.byPurpose);
+  const summary = `<div style="margin-top:4mm;display:flex;gap:8mm;font-size:11pt">
+    <table class="rpt" style="width:auto"><tr><th>สรุป</th><th>จำนวน</th></tr><tr><td>รายการเยี่ยมทั้งหมด</td><td style="text-align:right">${sm.entries} รายการ</td></tr><tr><td>ผู้มาเยี่ยมรวม</td><td style="text-align:right">${sm.visitors.toLocaleString('th-TH')} คน</td></tr><tr><td>ความพึงพอใจเฉลี่ย</td><td style="text-align:right">${sm.avg != null ? sm.avg.toFixed(2) + ' / 5 (' + sm.rated + ' ราย)' : '-'}</td></tr></table>
+    <table class="rpt" style="width:auto"><tr><th>วัตถุประสงค์</th><th>รายการ</th><th>คน</th></tr>${pk.map(k => '<tr><td>' + esc(k) + '</td><td style="text-align:right">' + sm.byPurpose[k].entries + '</td><td style="text-align:right">' + sm.byPurpose[k].visitors + '</td></tr>').join('') || '<tr><td colspan="3">-</td></tr>'}</table>
+    <div style="flex:1;display:flex;justify-content:space-around;align-items:flex-end;text-align:center;padding-bottom:2mm">
+      <div>ลงชื่อ ............................................ ผู้รายงาน<br>(............................................)<br>วันที่ ........./........./.........</div>
+      <div>ลงชื่อ ............................................ ผู้รับรอง<br>(${esc(settings.directorName || '............................................')})<br>${esc(settings.directorPosition || 'ผู้อำนวยการสถานศึกษา')}</div>
+    </div></div>`;
+  return '<style>@page{size:A4 landscape;margin:0}</style>' + pages.map((pg, pi) => `<div class="doc-page doc-land">${head}<table class="rpt">${th}${pg.map((r, i) => `<tr><td style="text-align:center">${pi * per + i + 1}</td><td>${thaiDate(r.visitDate)}</td><td>${esc(r.name)}<br><span style="font-size:9.5pt">${esc(r.position)}</span></td><td>${esc(r.org)}</td><td>${esc(r.purpose || '-')}</td><td style="text-align:center">${Number(r.visitors) || 1}</td><td style="text-align:center">${r.rating ? stars(r.rating) : '-'}</td><td style="font-size:9.5pt">${esc(String(r.comment || '').slice(0, 120))}${String(r.comment || '').length > 120 ? '…' : ''}</td></tr>`).join('') || '<tr><td colspan="8" style="text-align:center">ไม่มีรายการ</td></tr>'}</table>
+    ${pi === pages.length - 1 ? summary : ''}<div style="position:absolute;bottom:6mm;left:16mm;right:16mm;font-size:9pt;color:#555;display:flex;justify-content:space-between"><span>สมุดเยี่ยมอิเล็กทรอนิกส์ • ${esc(settings.schoolName || '')}</span><span>หน้า ${pi + 1}/${pages.length}</span></div></div>`).join('');
+}
+function printReport() { runPrint(reportPage($('dYearType').value, $('dYear').value)); }
 
 // ---------- print (A4 หน้าละ 1 คน) ----------
 function docPage(r) {
@@ -543,9 +648,11 @@ function docPage(r) {
       <tr><td style="padding:2mm 0;vertical-align:top">ตำแหน่ง</td><td style="padding:2mm 0">${line(r && r.position)}</td></tr>
       <tr><td style="padding:2mm 0;vertical-align:top">หน่วยงาน</td><td style="padding:2mm 0">${line(r && r.org)}</td></tr>
       <tr><td style="padding:2mm 0;vertical-align:top">วัตถุประสงค์</td><td style="padding:2mm 0">${blank ? line('') : esc(r.purpose || '-')}</td></tr>
+      <tr><td style="padding:2mm 0;vertical-align:top">จำนวนผู้เยี่ยม</td><td style="padding:2mm 0">${blank ? line('') : '<b>' + (Number(r.visitors) || 1) + '</b> คน'}</td></tr>
+      <tr><td style="padding:2mm 0;vertical-align:top">ความพึงพอใจ</td><td style="padding:2mm 0">${blank ? '☆ ☆ ☆ ☆ ☆' : (r.rating ? stars(r.rating) + ' (' + r.rating + '/5)' : '-')}</td></tr>
     </table>
     <div style="margin-top:4mm;font-weight:700">ข้อคิดเห็น / ความประทับใจ / ข้อเสนอแนะ</div>
-    <div style="border:1px solid #333;border-radius:3mm;min-height:${blank ? 90 : 70}mm;padding:4mm;margin-top:2mm;white-space:pre-wrap;line-height:1.7">${blank ? '' : esc(r.comment)}</div>
+    <div style="border:1px solid #333;border-radius:3mm;min-height:${blank ? 90 : 70}mm;padding:4mm;margin-top:2mm;white-space:pre-wrap;line-height:1.7">${blank ? '' : esc(r.comment || '-')}</div>
     <div style="display:flex;justify-content:flex-end;margin-top:12mm">
       <div style="text-align:center;width:80mm">
         <div style="height:28mm;display:flex;align-items:flex-end;justify-content:center">${blank ? '' : '<img src="' + esc(r.signatureUrl) + '" style="max-height:26mm;max-width:70mm;object-fit:contain">'}</div>
@@ -667,7 +774,10 @@ async function purge() {
 
 // ---------- bootstrap ----------
 function bind() {
-  $('btnSubmit').onclick = submitGuest; $('btnNewEntry').onclick = newEntry;
+  $('btnSubmit').onclick = submitGuest; $('btnNewEntry').onclick = newEntry; $('gPurpose').onchange = togglePurposeOther;
+  $('btnVisMinus').onclick = () => stepVisitors(-1); $('btnVisPlus').onclick = () => stepVisitors(1);
+  document.querySelectorAll('#gStars .star').forEach(el => el.onclick = () => setRating(Number(el.dataset.v)));
+  $('dYearType').onchange = renderDashboard; $('dYear').onchange = renderDashboard; $('dashBox').ontoggle = () => { if ($('dashBox').open) renderDashboard(); }; $('btnReport').onclick = printReport;
   $('btnAdminEntry').onclick = () => { if (state.token) enterAdmin(); else showView('Login'); };
   $('btnBackGuest').onclick = () => showView('Guest'); $('btnLogin').onclick = login; $('lPass').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
   $('btnLogout').onclick = () => logout(); $('btnRefresh').onclick = () => loadInitial(true); $('btnChangePw').onclick = () => openPwModal(false);
